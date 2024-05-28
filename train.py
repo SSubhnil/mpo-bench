@@ -43,7 +43,7 @@ def main():
     parser.add_argument('--sample_action_num', type=int, default=64,
                         help='number of sampled actions')
     parser.add_argument('--batch_size', type=int, default=64)
-    parser.add_argument('--iteration_num', type=int, default=1000,
+    parser.add_argument('--iteration_num', type=int, default=2500,
                         help='number of iteration to learn')
     parser.add_argument('--episode_rerun_num', type=int, default=3,
                         help='number of reruns of sampled episode')
