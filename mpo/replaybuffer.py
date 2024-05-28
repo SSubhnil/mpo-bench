@@ -10,7 +10,14 @@ class ReplayBuffer:
         self.episodes = []
         self.tmp_episode_buff = []
 
+    def _flatten_obs(self, observation):
+        if isinstance(observation, dict):
+            return np.concatenate([v.ravel() for v in observation.values()])
+        return observation
+
     def store_step(self, state, action, next_state, reward):
+        state = self._flatten_obs(state)
+        next_state = self._flatten_obs(next_state)
         self.tmp_episode_buff.append(
             (state, action, next_state, reward))
 
@@ -25,6 +32,7 @@ class ReplayBuffer:
 
     def store_episodes(self, episodes):
         for episode in episodes:
+            episode - [(self._flatten_obs(s), a, self._flatten_obs(ns), r) for s, a, ns, r in episode]
             states, actions, next_states, rewards = zip(*episode)
             episode_len = len(states)
             usable_episode_len = episode_len - 1

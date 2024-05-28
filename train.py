@@ -1,7 +1,7 @@
 import argparse
-import gym
+import gymnasium as gym
 from mpo import MPO
-
+from dm_control import suite
 gym.logger.set_level(40)
 
 
@@ -9,9 +9,11 @@ def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Implementation of MPO on gym environments')
-    parser.add_argument('--device', type=str, default='cpu')
-    parser.add_argument('--env', type=str, default='LunarLanderContinuous-v2',
-                        help='gym environment')
+    parser.add_argument('--device', type=str, default='cuda')
+    parser.add_argument('--domain', type=str, default='walker',
+                        help='dmc environment domain')
+    parser.add_argument('--task', type=str, default='walk',
+                        help='dmc environment task')
     parser.add_argument('--dual_constraint', type=float, default=0.1,
                         help='hard constraint of the dual formulation in the E-step')
     parser.add_argument('--kl_mean_constraint', type=float, default=0.01,
@@ -60,7 +62,7 @@ def main():
                         help='load path')
     args = parser.parse_args()
 
-    env = gym.make(args.env)
+    env = suite.load(domain_name=args.domain, task_name=args.task)
     model = MPO(
         args.device,
         env,

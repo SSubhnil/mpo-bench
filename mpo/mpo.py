@@ -3,7 +3,8 @@ from time import sleep
 import numpy as np
 from scipy.optimize import minimize
 from tqdm import tqdm
-import gym
+import gymnasium as gym
+from dm_control import suite
 import torch
 import torch.nn as nn
 from torch.nn.utils import clip_grad_norm_
@@ -122,18 +123,18 @@ class MPO(object):
                  evaluate_episode_maxstep=200):
         self.device = device
         self.env = env
-        if self.env.action_space.dtype == np.float32:
+        if self.env.action_spec.dtype == np.float32:
             self.continuous_action_space = True
         else:  # discrete action space
             self.continuous_action_space = False
 
         # the number of dimensions of state space
-        self.ds = env.observation_space.shape[0]
+        self.ds = env.observation_spec.shape[0]
         # the number of dimensions of action space
         if self.continuous_action_space:
-            self.da = env.action_space.shape[0]
+            self.da = env.action_spec.shape[0]
         else:  # discrete action space
-            self.da = env.action_space.n
+            self.da = env.action_spec.n
 
         self.ε_dual = dual_constraint
         self.ε_kl_μ = kl_mean_constraint
@@ -514,12 +515,16 @@ class MPO(object):
 
     def __sample_trajectory_worker(self, i):
         buff = []
-        state, _ = self.env.reset()
+        time_step = self.env.reset()
+        state = self._flatten_obs(time_step.observation)
         for steps in range(self.sample_episode_maxstep):
             action = self.target_actor.action(
                 torch.from_numpy(state).type(torch.float32).to(self.device)
             ).cpu().numpy()
-            next_state, reward, termination, _, _ = self.env.step(action)
+            time_step = self.env.step(action)
+            next_state = self._flatten_obs(time_step.observation)
+            reward = time_step.reward
+            termination = time_step.last()
             buff.append((state, action, next_state, reward))
             if self.render and i == 0:
                 self.env.render()
@@ -544,17 +549,23 @@ class MPO(object):
             total_rewards = []
             for e in tqdm(range(self.evaluate_episode_num), desc='evaluating'):
                 total_reward = 0.0
-                state, _ = self.env.reset()
+                time_step = self.env.reset()
+                state = self._flatten_obs(time_step.observation)
                 for s in range(self.evaluate_episode_maxstep):
                     action = self.actor.action(
                         torch.from_numpy(state).type(torch.float32).to(self.device)
                     ).cpu().numpy()
-                    state, reward, termination, _, _ = self.env.step(action)
+                    time_step = self.env.step(action)
+                    state = self._flatten_obs(time_step.observation)
+                    reward = time_step.reward
                     total_reward += reward
-                    if termination:
+                    if time_step.last():
                         break
                 total_rewards.append(total_reward)
             return np.mean(total_rewards)
+
+    def _flatten_obs(self, observation):
+        return np.concatenate([v.ravel() for v in observation.values()])
 
     def __update_critic_td(self,
                            state_batch,
