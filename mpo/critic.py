@@ -1,17 +1,16 @@
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
-
+import numpy as np
 
 class CriticContinuous(nn.Module):
     """
     :param env: OpenAI gym environment
     """
-    def __init__(self, env):
+    def __init__(self, ds, da):
         super(CriticContinuous, self).__init__()
-        self.env = env
-        self.ds = env.observation_space.shape[0]
-        self.da = env.action_space.shape[0]
+        self.ds = ds
+        self.da = da
         self.lin1 = nn.Linear(self.ds + self.da, 256)
         self.lin2 = nn.Linear(256, 256)
         self.lin3 = nn.Linear(256, 1)

@@ -123,18 +123,14 @@ class MPO(object):
                  evaluate_episode_maxstep=200):
         self.device = device
         self.env = env
-        if self.env.action_spec.dtype == np.float32:
-            self.continuous_action_space = True
-        else:  # discrete action space
-            self.continuous_action_space = False
+        action_spec = self.env.action_spec()
+        obs_spec = self.env.observation_spec()
+
+        self.continuous_action_space = True
 
         # the number of dimensions of state space
-        self.ds = env.observation_spec.shape[0]
-        # the number of dimensions of action space
-        if self.continuous_action_space:
-            self.da = env.action_spec.shape[0]
-        else:  # discrete action space
-            self.da = env.action_spec.n
+        self.ds = int(sum(np.prod(spec.shape) for spec in obs_spec.values()))
+        self.da = int(action_spec.shape[0])
 
         self.ε_dual = dual_constraint
         self.ε_kl_μ = kl_mean_constraint
@@ -161,10 +157,10 @@ class MPO(object):
             self.A_eye = torch.eye(self.da).to(self.device)
 
         if self.continuous_action_space:
-            self.actor = ActorContinuous(env).to(self.device)
-            self.critic = CriticContinuous(env).to(self.device)
-            self.target_actor = ActorContinuous(env).to(self.device)
-            self.target_critic = CriticContinuous(env).to(self.device)
+            self.actor = ActorContinuous(self.ds, self.da).to(self.device)
+            self.critic = CriticContinuous(self.ds, self.da).to(self.device)
+            self.target_actor = ActorContinuous(self.ds, self.da).to(self.device)
+            self.target_critic = CriticContinuous(self.ds, self.da).to(self.device)
         else:  # discrete action space
             self.actor = ActorDiscrete(env).to(self.device)
             self.critic = CriticDiscrete(env).to(self.device)
@@ -526,9 +522,9 @@ class MPO(object):
             reward = time_step.reward
             termination = time_step.last()
             buff.append((state, action, next_state, reward))
-            if self.render and i == 0:
-                self.env.render()
-                sleep(0.01)
+            # if self.render and i == 0:
+            #     self.env.render()
+            #     sleep(0.01)
             if termination:
                 break
             else:
